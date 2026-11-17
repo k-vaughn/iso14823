@@ -3,3 +3,4 @@
 # SemVer ordering determines the latest registry version; dates are YYYY-MM-DD.
 # A full release is a 'registry' line with no pre-release label.
 # Sign pages that differ from the latest full release show the DRAFT watermark.
+0.1.0-alpha.1 2026-11-17 registry
