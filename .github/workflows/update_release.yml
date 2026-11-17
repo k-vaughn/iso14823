@@ -1,0 +1,85 @@
+name: Deploy site with mike
+
+# Deploy is invoked from release-on-merge. A release created with
+# GITHUB_TOKEN does not trigger other workflows' `on: release` handlers.
+# workflow_dispatch and release events cover a manual republish.
+
+on:
+  workflow_call:
+    inputs:
+      release_tag:
+        description: "Git tag / mike version to deploy (for example v0.1.0-alpha.1)"
+        required: true
+        type: string
+      head_sha:
+        description: "Commit to build. Empty uses the workflow SHA."
+        required: false
+        type: string
+        default: ""
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Git tag / mike version to deploy (empty uses a UTC timestamp)"
+        required: false
+        type: string
+        default: ""
+      head_sha:
+        description: "Commit to build. Empty uses the workflow SHA."
+        required: false
+        type: string
+        default: ""
+  release:
+    types: [created]
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.head_sha != '' && inputs.head_sha || github.sha }}
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Zensical and mike
+        run: |
+          pip install "zensical>=0.1.0"
+          pip install "git+https://github.com/squidfunk/mike.git"
+
+      - name: Resolve release tag
+        id: tag
+        run: |
+          set -euo pipefail
+          if [ -n "${{ inputs.release_tag }}" ]; then
+            TAG="${{ inputs.release_tag }}"
+          elif [ -n "${{ github.event.release.tag_name }}" ]; then
+            TAG="${{ github.event.release.tag_name }}"
+          elif [ -n "${{ github.event.inputs.release_tag }}" ]; then
+            TAG="${{ github.event.inputs.release_tag }}"
+          else
+            TAG=$(date -u +"%Y-%m-%d_%H-%M-%S")
+          fi
+          echo "Resolved RELEASE_TAG=$TAG"
+          echo "RELEASE_TAG=$TAG" >> "$GITHUB_ENV"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Regenerate pages
+        run: python3 scripts/build_pages.py
+
+      - name: Build and deploy site with mike
+        run: |
+          set -euo pipefail
+          RELEASE_TAG="${{ env.RELEASE_TAG }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          mike set-default --push latest --allow-undefined
+          mike deploy --branch=gh-pages --push --update-aliases "$RELEASE_TAG" latest

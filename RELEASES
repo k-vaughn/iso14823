@@ -1,0 +1,5 @@
+# version date type
+# type is 'registry' or 'doc-only'
+# SemVer ordering determines the latest registry version; dates are YYYY-MM-DD.
+# A full release is a 'registry' line with no pre-release label.
+# Sign pages that differ from the latest full release show the DRAFT watermark.

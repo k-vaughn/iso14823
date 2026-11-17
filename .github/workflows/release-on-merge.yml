@@ -1,0 +1,110 @@
+name: Apply VERSION and publish release
+
+# After merge to main: append RELEASES, regenerate pages (so a new full
+# release clears DRAFT watermarks), tag, then deploy with mike.
+# Release automation does not run on forks.
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: apply-and-release
+    if: github.repository == 'k-vaughn/iso14823'
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.apply.outputs.tag }}
+      publish: ${{ steps.apply.outputs.publish }}
+      kind: ${{ steps.apply.outputs.kind }}
+      version: ${{ steps.apply.outputs.version }}
+      prerelease: ${{ steps.apply.outputs.prerelease }}
+      sha: ${{ steps.commit.outputs.sha || github.sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Apply VERSION
+        id: apply
+        run: |
+          set -euo pipefail
+          git fetch --tags --force
+          TAGS=$(git tag -l | paste -sd, -)
+          python3 scripts/versioning.py apply --existing-tags "$TAGS" | tee /tmp/version-apply.out
+          grep -E '^(kind|version|tag|prerelease|changed|publish)=' /tmp/version-apply.out >> "$GITHUB_OUTPUT"
+
+      - name: Commit RELEASES
+        id: releases
+        if: steps.apply.outputs.changed == 'true'
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add RELEASES
+          if git diff --staged --quiet; then
+            echo "No RELEASES change to commit"
+          else
+            git commit -m "chore(release): ${{ steps.apply.outputs.tag }}"
+            git push
+          fi
+
+      - name: Refresh generated pages
+        run: python3 scripts/build_pages.py
+
+      - name: Commit generated pages when the draft baseline moved
+        id: commit
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs
+          if git diff --staged --quiet; then
+            echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          else
+            git commit -m "chore(release): ${{ steps.apply.outputs.tag }} draft markers"
+            git push
+            echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create GitHub Release
+        if: steps.apply.outputs.publish == 'true' && steps.apply.outputs.tag != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.apply.outputs.tag }}
+          KIND: ${{ steps.apply.outputs.kind }}
+          VERSION: ${{ steps.apply.outputs.version }}
+          PRERELEASE: ${{ steps.apply.outputs.prerelease }}
+          TARGET: ${{ steps.commit.outputs.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "GitHub Release $TAG already exists"
+            exit 0
+          fi
+          ARGS=( "$TAG" --title "$TAG" --target "$TARGET" --generate-notes )
+          if [ "$PRERELEASE" = "true" ]; then
+            ARGS+=( --prerelease )
+          fi
+          ARGS+=( --notes "Automated release from VERSION (${KIND} ${VERSION})." )
+          gh release create "${ARGS[@]}"
+
+  deploy:
+    name: deploy-site
+    needs: release
+    if: needs.release.outputs.publish == 'true' && needs.release.outputs.tag != ''
+    uses: ./.github/workflows/update_release.yml
+    with:
+      release_tag: ${{ needs.release.outputs.tag }}
+      head_sha: ${{ needs.release.outputs.sha }}
+    secrets: inherit

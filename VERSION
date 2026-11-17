@@ -1,0 +1,11 @@
+# Registry / documentation release version for this repository.
+# Line 1 is required. Line 2 is only for documentation-only releases.
+#
+# Registry release (must be greater than every SemVer in RELEASES):
+#   version: 0.2.0-alpha.1
+#   version: 0.2.0
+#
+# Documentation-only release (SemVer unchanged; date >= latest RELEASES date):
+#   version: 0.2.0
+#   doc-only: 2026-11-12
+version: 0.1.0-alpha.1

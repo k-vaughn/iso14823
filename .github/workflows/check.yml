@@ -1,0 +1,28 @@
+name: Check register
+
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+
+jobs:
+  check-register:
+    name: check-register
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Test and confirm generated pages
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -v
+          python3 scripts/import_annex.py --check
+          python3 scripts/build_pages.py --check

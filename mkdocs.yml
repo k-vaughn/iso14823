@@ -1,0 +1,82 @@
+site_name: Registry for ITS Graphics
+site_description: Public register of ISO 14823-1 graphic data dictionary pictograms.
+site_url: https://k-vaughn.github.io/iso14823/
+repo_url: https://github.com/k-vaughn/iso14823
+repo_name: iso14823
+docs_dir: docs
+site_dir: site
+use_directory_urls: true
+
+nav:
+  - TC204 on ISO.org: https://www.iso.org/committee/54706.html
+  - TC 204 Home: https://isotc204.org/
+  - RITSO Home: https://isotc204.org/ritso/
+  - Registry for ITS Graphics:
+      - Home: index.md
+      - Find a sign: find.md
+      - Service categories:
+          - Warning (11): categories/11.md
+          - Regulatory (12): categories/12.md
+          - Informative (13): categories/13.md
+          - Public facilities (21): categories/21.md
+          - Ambient conditions (31): categories/31.md
+          - Road conditions (32): categories/32.md
+          - Supplementary panel (41): categories/41.md
+
+copyright: >-
+  Registry for ITS Graphics.
+  <a href="https://creativecommons.org/licenses/by/4.0/" rel="license">CC BY 4.0</a>
+
+theme:
+  name: material
+  variant: classic
+  language: en
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.top
+    - navigation.tracking
+    - navigation.path
+    - search.highlight
+    - search.suggest
+    - toc.follow
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  icon:
+    repo: fontawesome/brands/github
+
+extra_css:
+  - stylesheets/extra.css
+
+extra_javascript:
+  - javascripts/find.js
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+
+extra:
+  search:
+    placeholder: Search by code or keyword
+  version:
+    provider: mike
+    alias: true
+    default: latest
